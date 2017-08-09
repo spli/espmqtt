@@ -11,9 +11,17 @@
 #include "openssl/ssl.h"
 #endif
 
-typedef struct mqtt_client mqtt_client;
+typedef struct mqtt_client_t mqtt_client_t;
+typedef mqtt_client_t mqtt_client; //for backward compatible
+typedef struct mqtt_setting_t mqtt_settings;
 typedef struct mqtt_event_data_t mqtt_event_data_t;
 
+typedef struct mqtt_buffer_t {
+    struct mqtt_buffer_t *next;
+    struct mqtt_buffer_t *prev;
+    char *data;
+    int len;
+} mqtt_buffer_t;
 /**
  * \return True on connect success, false on error
  */
@@ -37,34 +45,34 @@ typedef int (* mqtt_read_callback)(mqtt_client *client, void *buffer, int len, i
 typedef int (* mqtt_write_callback)(mqtt_client *client, const void *buffer, int len, int timeout_ms);
 typedef void (* mqtt_event_callback)(mqtt_client *client, mqtt_event_data_t *event_data);
 
-typedef struct mqtt_settings {
-    mqtt_connect_callback connect_cb;
+typedef struct mqtt_setting_t {
+    mqtt_connect_callback    connect_cb;
     mqtt_disconnect_callback disconnect_cb;
 
-    mqtt_read_callback read_cb;
-    mqtt_write_callback write_cb;
+    mqtt_read_callback       read_cb;
+    mqtt_write_callback      write_cb;
 
-    mqtt_event_callback connected_cb;
-    mqtt_event_callback disconnected_cb;
+    mqtt_event_callback      connected_cb;
+    mqtt_event_callback      disconnected_cb;
 
-    mqtt_event_callback subscribe_cb;
-    mqtt_event_callback publish_cb;
-    mqtt_event_callback data_cb;
+    mqtt_event_callback      subscribe_cb;
+    mqtt_event_callback      publish_cb;
+    mqtt_event_callback      data_cb;
 
-    char host[CONFIG_MQTT_MAX_HOST_LEN];
+    char     *host
+    char     *client_id;
+    char     *username;
+    char     *password;
+    char     *lwt_topic;
+    char     *lwt_msg;
     uint32_t port;
-    char client_id[CONFIG_MQTT_MAX_CLIENT_LEN];
-    char username[CONFIG_MQTT_MAX_USERNAME_LEN];
-    char password[CONFIG_MQTT_MAX_PASSWORD_LEN];
-    char lwt_topic[CONFIG_MQTT_MAX_LWT_TOPIC];
-    char lwt_msg[CONFIG_MQTT_MAX_LWT_MSG];
     uint32_t lwt_msg_len;
     uint32_t lwt_qos;
     uint32_t lwt_retain;
     uint32_t clean_session;
     uint32_t keepalive;
-    bool auto_reconnect;
-} mqtt_settings;
+    bool     auto_reconnect;
+} mqtt_setting_t;
 
 typedef struct mqtt_event_data_t
 {
@@ -95,7 +103,7 @@ typedef struct mqtt_state_t
   int pending_publish_qos;
 } mqtt_state_t;
 
-typedef struct mqtt_client {
+typedef struct mqtt_client_t {
   int socket;
 
 #if defined(CONFIG_MQTT_SECURITY_ON)  // ENABLE MQTT OVER SSL
@@ -108,11 +116,19 @@ typedef struct mqtt_client {
   mqtt_connect_info_t connect_info;
   QueueHandle_t xSendingQueue;
   RINGBUF send_rb;
+  mqtt_buffer_t *send_buffer;
   uint32_t keepalive_tick;
-} mqtt_client;
 
-mqtt_client *mqtt_start(mqtt_settings *mqtt_info);
-void mqtt_stop();
+  int (*_connect)(struct mqtt_client_t *mqtt_client);
+  int (*_read)(struct mqtt_client_t *mqtt_client, char *buffer, int len);
+  int (*_write)(struct mqtt_client_t *mqtt_client, char *buffer, int len);
+  int (*_close)(struct mqtt_client_t *mqtt_client);
+} mqtt_client_t;
+
+mqtt_client_t *mqtt_start(mqtt_settings *mqtt_info);
+mqtt_client_t *mqtt_new(const char *uri);
+
+void mqtt_stop(mqtt_client_t *mqtt_client);
 void mqtt_task(void *pvParameters);
 void mqtt_subscribe(mqtt_client *client, const char *topic, uint8_t qos);
 void mqtt_unsubscribe(mqtt_client *client, const char *topic);

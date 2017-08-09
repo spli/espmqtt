@@ -556,7 +556,12 @@ void mqtt_task(void *pvParameters)
     xMqttTask = NULL;
     vTaskDelete(NULL);
 }
-
+mqtt_client *mqtt_new(const char *uri)
+{
+    mqtt_setting_t *settings = calloc(1, sizeof(mqtt_setting_t));
+    parsed_uri_t *puri = parse_uri(uri);
+    return NULL;
+}
 mqtt_client *mqtt_start(mqtt_settings *settings)
 {
 	terminate_mqtt = false;
@@ -668,7 +673,7 @@ void mqtt_publish(mqtt_client* client, const char *topic, const char *data, int 
               client->send_rb.size);
 }
 
-void mqtt_stop()
+void mqtt_stop(mqtt_client_t *mqtt_client)
 {
 	terminate_mqtt = true;
 }
