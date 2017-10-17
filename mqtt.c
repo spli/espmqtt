@@ -341,7 +341,7 @@ void mqtt_sending_task(void *pvParameters)
                 client->mqtt_state.pending_msg_type = mqtt_get_type(client->mqtt_state.outbound_message->data);
                 client->mqtt_state.pending_msg_id = mqtt_get_id(client->mqtt_state.outbound_message->data,
                                                     client->mqtt_state.outbound_message->length);
-                mqtt_info("Sending pingreq");
+                // mqtt_info("Sending pingreq");
                 send_len = client->settings->write_cb(client,
                       client->mqtt_state.outbound_message->data,
                       client->mqtt_state.outbound_message->length, 0);
@@ -365,16 +365,16 @@ void deliver_publish(mqtt_client *client, uint8_t *message, int length)
 
     do
     {
-        event_data.topic_length = length;
-        event_data.topic = mqtt_get_publish_topic(message, &event_data.topic_length);
-        event_data.data_length = length;
-        event_data.data = mqtt_get_publish_data(message, &event_data.data_length);
-
         if(total_mqtt_len == 0){
+            event_data.topic_length = length;
+            event_data.topic = mqtt_get_publish_topic(message, &event_data.topic_length);
+            event_data.data_length = length;
+            event_data.data = mqtt_get_publish_data(message, &event_data.data_length);
             total_mqtt_len = client->mqtt_state.message_length - client->mqtt_state.message_length_read + event_data.data_length;
             mqtt_len = event_data.data_length;
         } else {
             mqtt_len = len_read;
+            event_data.data = (const char*)client->mqtt_state.in_buffer;
         }
 
         event_data.data_total_length = total_mqtt_len;
@@ -412,7 +412,7 @@ void mqtt_start_receive_schedule(mqtt_client *client)
 
         read_len = client->settings->read_cb(client, client->mqtt_state.in_buffer, CONFIG_MQTT_BUFFER_SIZE_BYTE, 0);
 
-        mqtt_info("Read len %d", read_len);
+        // mqtt_info("Read len %d", read_len);
         if (read_len <= 0) {
             // ECONNRESET for example
             mqtt_info("Read error %d", errno);
@@ -482,7 +482,7 @@ void mqtt_start_receive_schedule(mqtt_client *client)
                 mqtt_queue(client);
                 break;
             case MQTT_MSG_TYPE_PINGRESP:
-                mqtt_info("MQTT_MSG_TYPE_PINGRESP");
+                // mqtt_info("MQTT_MSG_TYPE_PINGRESP");
                 // Ignore
                 break;
         }
@@ -672,4 +672,3 @@ void mqtt_stop()
 {
 	terminate_mqtt = true;
 }
-
